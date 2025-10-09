@@ -1,7 +1,7 @@
 export function playAlarm(): void {
   // TODO: hook real sound later
   try {
-    const audio = new Audio("/sounds/preview.mp3");
+    const audio = new Audio("/sounds/notification1.mp3");
     void audio.play().catch(() => {});
   } catch {
     // no-op
