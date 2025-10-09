@@ -1,49 +1,105 @@
 import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
+import { TimerCard } from "./components/timer-card";
+import { AddTimerButton } from "./components/add-timer-button";
+import { PresetButtons } from "./components/preset-buttons";
+import type { Timer } from "./types/timer";
 
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+  const [timers, setTimers] = useState<Timer[]>([]);
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
+  const addTimer = (minutes: number, seconds = 0) => {
+    const totalSeconds = minutes * 60 + seconds;
+    const deadline = Date.now() + totalSeconds * 1000; // ms精度
+    const newTimer: Timer = {
+      id: Date.now().toString(),
+      name: `ラーメン ${minutes}分${seconds > 0 ? seconds + "秒" : ""}`,
+      deadline,
+      totalSeconds,
+      isRunning: true,
+      isCompleted: false,
+    };
+    setTimers((prev) => [...prev, newTimer]);
+  };
+
+  const removeTimer = (id: string) => {
+    setTimers((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const toggleTimer = (id: string) => {
+    setTimers((prev) =>
+      prev.map((timer) => {
+        if (timer.id === id) {
+          if (timer.isRunning) {
+            const remaining = Math.max(0, timer.deadline - Date.now());
+            return { ...timer, isRunning: false, remainingMs: remaining };
+          } else {
+            const newDeadline = Date.now() + (timer.remainingMs || 0);
+            return { ...timer, isRunning: true, deadline: newDeadline };
+          }
+        }
+        return timer;
+      })
+    );
+  };
+
+  const resetTimer = (id: string) => {
+    setTimers((prev) =>
+      prev.map((timer) => {
+        if (timer.id === id) {
+          const newDeadline = Date.now() + timer.totalSeconds * 1000;
+          return {
+            ...timer,
+            deadline: newDeadline,
+            isRunning: true,
+            isCompleted: false,
+          };
+        }
+        return timer;
+      })
+    );
+  };
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
+    <main className="min-h-screen bg-background p-4 md:p-8">
+      <div className="mx-auto max-w-6xl">
+        <header className="mb-8 text-center">
+          <h1 className="mb-2 font-bold text-4xl text-balance md:text-5xl">
+            🍜 ラーメンタイマー
+          </h1>
+          <p className="text-muted-foreground text-pretty">
+            複数のラーメンを同時に管理できる正確なタイマー
+          </p>
+        </header>
 
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+        <PresetButtons onAddTimer={addTimer} />
+
+        <div className="mb-6">
+          <AddTimerButton onAddTimer={addTimer} />
+        </div>
+
+        {timers.length === 0 ? (
+          <div className="rounded-lg border-2 border-dashed border-border bg-muted/30 p-12 text-center">
+            <div className="mx-auto mb-4 text-6xl">🍜</div>
+            <h3 className="mb-2 font-semibold text-lg">タイマーがありません</h3>
+            <p className="text-muted-foreground text-sm">
+              プリセットを選ぶか、カスタムタイマーを追加してください
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {timers.map((timer) => (
+              <TimerCard
+                key={timer.id}
+                timer={timer}
+                onRemove={removeTimer}
+                onToggle={toggleTimer}
+                onReset={resetTimer}
+              />
+            ))}
+          </div>
+        )}
       </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
     </main>
   );
 }
