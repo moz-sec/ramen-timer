@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./App.css";
 import { TimerCard } from "./components/timer-card";
 import { AddTimerButton } from "./components/add-timer-button";
 import { PresetButtons } from "./components/preset-buttons";
 import type { Timer } from "./types/timer";
+import { loadTimers, saveTimers } from "./lib/storage";
 
 function App() {
-  const [timers, setTimers] = useState<Timer[]>([]);
+  const [timers, setTimers] = useState<Timer[]>(() => loadTimers());
 
   const addTimer = (minutes: number, seconds = 0) => {
     const totalSeconds = minutes * 60 + seconds;
@@ -59,6 +60,26 @@ function App() {
       })
     );
   };
+
+  // タイマーが変更されるとlocalStorageに保存
+  useEffect(() => {
+    saveTimers(timers);
+  }, [timers]);
+
+  // アプリ起動時に期限切れのタイマーをクリーンアップ
+  useEffect(() => {
+    const now = Date.now();
+    setTimers((prev) =>
+      prev.filter((timer) => {
+        // 期限切れのタイマーを一定時間保持(5分)
+        if (timer.isCompleted) {
+          const completedTime = timer.deadline;
+          return now - completedTime < 5 * 60 * 1000;
+        }
+        return true;
+      })
+    );
+  }, []);
 
   return (
     <main className="min-h-screen bg-background p-4 md:p-8">

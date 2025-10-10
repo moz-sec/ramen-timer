@@ -25,6 +25,21 @@ export function TimerCard({
       setTimeLeft(Math.max(0, Math.floor((timer.remainingMs || 0) / 1000)));
       return;
     }
+
+    // 初期残り時間を計算
+    const remaining = timer.deadline - Date.now();
+    const initialSeconds = Math.max(0, Math.ceil(remaining / 1000));
+    setTimeLeft(initialSeconds);
+
+    // タイマーが期限切れの場合に通知を表示
+    if (remaining <= 0 && !hasNotified) {
+      setHasNotified(true);
+      playAlarm();
+      sendNotification(timer.name);
+      vibrate();
+      return;
+    }
+
     const interval = setInterval(() => {
       const remaining = timer.deadline - Date.now();
       const seconds = Math.max(0, Math.ceil(remaining / 1000));
